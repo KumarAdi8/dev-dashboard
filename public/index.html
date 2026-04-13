@@ -143,16 +143,24 @@
       border: 1px solid var(--color-border-default);
       border-radius: var(--card-radius);
       overflow: hidden;
-      transition: box-shadow 0.15s, border-color 0.15s;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
       cursor: pointer;
+      animation: cardEntrance 0.35s ease both;
+      will-change: transform;
     }
     .project-card:hover {
-      box-shadow: var(--color-shadow-medium);
-      border-color: var(--color-border-muted);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      border-color: var(--color-accent-muted);
+      transform: translateY(-3px);
+    }
+    .project-card:active {
+      transform: translateY(-1px) scale(0.99);
+      transition-duration: 0.08s;
     }
     .project-card.selected {
       border-color: var(--color-accent-fg);
       box-shadow: 0 0 0 2px var(--color-accent-muted);
+      transform: none;
     }
 
     .card-header {
@@ -168,7 +176,22 @@
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       font-size: 18px;
+      position: relative;
+      overflow: hidden;
     }
+    .card-icon-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 0.45s ease;
+      z-index: 1;
+      pointer-events: none;
+      border-radius: 8px;
+    }
+    .card-icon-img.loaded { opacity: 1; }
     .card-icon.xcode { background: linear-gradient(135deg, #1C7FF9 0%, #0A4CBF 100%); }
     .card-icon.node { background: linear-gradient(135deg, #68a063 0%, #3d7a34 100%); }
     .card-icon.flutter { background: linear-gradient(135deg, #54C5F8 0%, #2196F3 100%); }
@@ -287,10 +310,11 @@
       background: var(--color-canvas-default);
       color: var(--color-fg-default);
       cursor: pointer;
-      transition: background 0.1s, border-color 0.1s;
+      transition: background 0.12s, border-color 0.12s, transform 0.1s, box-shadow 0.12s;
       white-space: nowrap;
     }
-    .action-btn:hover { background: var(--color-canvas-subtle); border-color: var(--color-border-muted); }
+    .action-btn:hover { background: var(--color-canvas-subtle); border-color: var(--color-border-muted); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .action-btn:active { transform: scale(0.94); box-shadow: none; }
     .action-btn.primary { background: var(--color-accent-emphasis); border-color: transparent; color: #fff; }
     .action-btn.primary:hover { background: var(--color-accent-fg); }
     .action-btn.danger { color: var(--color-danger-fg); }
@@ -306,7 +330,10 @@
       overflow-y: auto;
       display: none;
     }
-    .detail-panel.open { display: block; }
+    .detail-panel.open {
+      display: block;
+      animation: panelSlideIn 0.22s cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
     .panel-header {
       padding: 16px;
       border-bottom: 1px solid var(--color-border-default);
@@ -404,6 +431,23 @@
     .toast.success { background: var(--color-success-emphasis); }
     .toast.error { background: var(--color-danger-emphasis); }
     @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes cardEntrance {
+      from { opacity: 0; transform: translateY(14px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes panelSlideIn {
+      from { transform: translateX(18px); opacity: 0.5; }
+      to   { transform: translateX(0);    opacity: 1;   }
+    }
+    @keyframes modalEntrance {
+      from { transform: scale(0.93) translateY(10px); opacity: 0; }
+      to   { transform: scale(1)    translateY(0);    opacity: 1; }
+    }
+    @keyframes statsEntrance {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0);   }
+    }
+    .stats-row { animation: statsEntrance 0.3s ease 0.08s both; }
 
     /* Loading state */
     .skeleton {
@@ -491,6 +535,135 @@
       color: var(--color-danger-fg);
     }
 
+    /* Requirements / App Idea section */
+    .req-section {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, var(--color-accent-subtle) 0%, var(--color-canvas-subtle) 100%);
+      border: 1px solid var(--color-accent-muted);
+      border-radius: 8px;
+    }
+    .req-section-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-accent-fg);
+      margin-bottom: 5px;
+    }
+    .req-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-fg-default);
+      margin: 0 0 4px;
+      line-height: 1.3;
+    }
+    .req-desc {
+      font-size: 12px;
+      color: var(--color-fg-muted);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    /* Requirements detail panel */
+    .req-full {
+      font-size: 13px;
+      color: var(--color-fg-default);
+      line-height: 1.6;
+    }
+    .req-full h1, .req-full h2, .req-full h3 {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 12px 0 4px;
+      color: var(--color-fg-default);
+      border-bottom: 1px solid var(--color-border-subtle);
+      padding-bottom: 3px;
+    }
+    .req-full h1 { font-size: 15px; color: var(--color-accent-fg); }
+    .req-full p { margin: 4px 0 8px; color: var(--color-fg-muted); }
+    .req-full ul, .req-full ol { margin: 4px 0 8px; padding-left: 18px; }
+    .req-full li { margin-bottom: 3px; color: var(--color-fg-muted); }
+    .req-full code { font-family: ui-monospace,monospace; font-size: 11px; background: var(--color-canvas-subtle); padding: 1px 4px; border-radius: 3px; }
+    .req-full strong { color: var(--color-fg-default); font-weight: 600; }
+    /* Pin button */
+    .pin-btn {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      color: var(--color-fg-subtle);
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+      display: flex;
+      align-items: center;
+    }
+    .pin-btn:hover { color: #f59e0b; background: #fef3c755; }
+    .pin-btn.pinned { color: #f59e0b; }
+    [data-color-mode="dark"] .pin-btn.pinned { color: #fbbf24; }
+
+    /* Pinned/unpinned dividers in grid */
+    .pinned-divider {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #f59e0b;
+      margin: 2px 0;
+    }
+    .pinned-divider::after { content: ''; flex: 1; height: 1px; background: #f59e0b33; }
+    .unpinned-divider {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-fg-muted);
+      margin: 10px 0 2px;
+    }
+    .unpinned-divider::after { content: ''; flex: 1; height: 1px; background: var(--color-border-default); }
+
+    /* Auto-refresh dot */
+    .refresh-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--color-success-emphasis);
+      display: inline-block;
+      margin-right: 3px;
+      animation: pulse-dot 2.5s infinite;
+    }
+    .refresh-dot.off { background: var(--color-fg-subtle); animation: none; }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    /* Device section */
+    .device-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #7c3aed22, #4f46e522);
+      border: 1px solid #7c3aed44;
+      color: #7c3aed;
+      font-weight: 500;
+    }
+    [data-color-mode="dark"] .device-badge { color: #a78bfa; border-color: #7c3aed66; background: #2d1f6622; }
+
     /* Diff modal */
     .modal-backdrop {
       position: fixed; inset: 0; z-index: 200;
@@ -506,6 +679,7 @@
       overflow: hidden;
       display: flex; flex-direction: column;
       box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+      animation: modalEntrance 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     }
     .modal-header {
       padding: 16px 20px;
@@ -555,6 +729,10 @@
         <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
       </svg>
     </button>
+    <button class="action-btn" id="autorefresh-btn" onclick="toggleAutoRefresh()" title="Auto-refresh ON — every 5 min (click to pause)">
+      <span class="refresh-dot" id="refresh-dot"></span>
+      Auto
+    </button>
     <button class="action-btn primary" id="refresh-btn" onclick="loadProjects()">
       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
         <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -569,6 +747,9 @@
 
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
+    <div class="sidebar-section-label">Pinned</div>
+    <div id="sidebar-pinned"></div>
+    <div class="sidebar-divider"></div>
     <div class="sidebar-section-label">Projects</div>
     <div id="sidebar-projects"></div>
     <div class="sidebar-divider"></div>
@@ -613,6 +794,11 @@
         <option value="main">main / master</option>
         <option value="non-main">Non-main</option>
       </select>
+      <select class="form-select input-sm" id="sort-filter" onchange="sortMode=this.value;renderProjects()">
+        <option value="default">Sort: Default</option>
+        <option value="name">Sort: Name A–Z</option>
+        <option value="activity">Sort: Last Activity</option>
+      </select>
     </div>
 
     <div class="stats-row" id="stats-row"></div>
@@ -628,6 +814,7 @@
   <!-- Detail panel -->
   <aside class="detail-panel" id="detail-panel">
     <div class="panel-header">
+      <div id="panel-icon" style="width:32px;height:32px;border-radius:8px;flex-shrink:0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;"></div>
       <h2 id="panel-title">Project Details</h2>
       <button class="action-btn" onclick="closePanel()">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -658,18 +845,62 @@
 // ─────────────────────────────────────────────
 let allProjects = [];
 let simulators = [];
+let devices = [];
 let selectedProject = null;
 let activeFilter = null;
+let sortMode = 'default';
+
+// ── Pinned projects (localStorage) ──
+let pinnedIds = new Set(JSON.parse(localStorage.getItem('pinnedProjects') || '[]'));
+function savePins() { localStorage.setItem('pinnedProjects', JSON.stringify([...pinnedIds])); }
+function togglePin(id) {
+  if (pinnedIds.has(id)) pinnedIds.delete(id);
+  else pinnedIds.add(id);
+  savePins();
+  renderSidebarProjects();
+  renderProjects();
+}
+
+// ── Auto-refresh: 5 min, pauses when tab hidden (battery-friendly) ──
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
+let autoRefreshEnabled = JSON.parse(localStorage.getItem('autoRefresh') ?? 'true');
+let autoRefreshTimer = null;
+function startAutoRefresh() {
+  stopAutoRefresh();
+  if (autoRefreshEnabled) autoRefreshTimer = setInterval(loadProjects, AUTO_REFRESH_MS);
+}
+function stopAutoRefresh() {
+  if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+}
+function toggleAutoRefresh() {
+  autoRefreshEnabled = !autoRefreshEnabled;
+  localStorage.setItem('autoRefresh', JSON.stringify(autoRefreshEnabled));
+  startAutoRefresh();
+  updateAutoRefreshUI();
+  toast(autoRefreshEnabled ? 'Auto-refresh on (every 5 min)' : 'Auto-refresh paused', autoRefreshEnabled ? 'success' : '');
+}
+function updateAutoRefreshUI() {
+  const dot = document.getElementById('refresh-dot');
+  const btn = document.getElementById('autorefresh-btn');
+  if (!dot || !btn) return;
+  dot.className = 'refresh-dot' + (autoRefreshEnabled ? '' : ' off');
+  btn.title = autoRefreshEnabled ? 'Auto-refresh ON — every 5 min (click to pause)' : 'Auto-refresh OFF (click to enable)';
+}
+// Pause when tab is background → resume + immediate refresh when visible (battery saving)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopAutoRefresh();
+  else { startAutoRefresh(); if (autoRefreshEnabled) loadProjects(); }
+});
 
 // ─────────────────────────────────────────────
 // Boot
 // ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  updateAutoRefreshUI();
   loadProjects();
   loadSimulators();
-
-  // Auto-refresh every 60s
-  setInterval(loadProjects, 60000);
+  loadDevices();
+  startAutoRefresh();
 });
 
 // ─────────────────────────────────────────────
@@ -686,10 +917,13 @@ async function loadProjects() {
   const btn = document.getElementById('refresh-btn');
   btn.disabled = true;
   try {
-    const data = await api('GET', '/api/projects');
-    if (data.ok) {
-      allProjects = data.projects;
-      document.getElementById('scan-time').textContent = `Last scan: ${new Date(data.scannedAt).toLocaleTimeString()}`;
+    const [projData] = await Promise.all([
+      api('GET', '/api/projects'),
+      loadDevices()
+    ]);
+    if (projData.ok) {
+      allProjects = projData.projects;
+      document.getElementById('scan-time').textContent = `Last scan: ${new Date(projData.scannedAt).toLocaleTimeString()}`;
       renderSidebarProjects();
       renderStats();
       renderProjects();
@@ -711,24 +945,46 @@ async function loadSimulators() {
   } catch { /* ignore */ }
 }
 
+async function loadDevices() {
+  try {
+    const data = await api('GET', '/api/devices');
+    if (data.ok) devices = data.devices;
+  } catch { /* ignore */ }
+}
+
 // ─────────────────────────────────────────────
 // Rendering: sidebar
 // ─────────────────────────────────────────────
 function renderSidebarProjects() {
-  const el = document.getElementById('sidebar-projects');
-  el.innerHTML = allProjects.map(p => `
+  const pinned = allProjects.filter(p => pinnedIds.has(p.id));
+  const rest = allProjects.filter(p => !pinnedIds.has(p.id));
+  const makeItem = p => `
     <button class="sidebar-item" onclick="selectProject('${p.id}')">
-      <span class="dot" style="background:${typeColor(p.type)}"></span>
+      ${pinnedIds.has(p.id)
+        ? `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`
+        : `<span class="dot" style="background:${typeColor(p.type)}"></span>`}
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
       ${p.git.isDirty ? `<span class="item-badge" style="background:#fef3c7;color:#92400e">~${p.git.changedFiles}</span>` : ''}
     </button>
-  `).join('');
+  `;
+  document.getElementById('sidebar-pinned').innerHTML = pinned.length
+    ? pinned.map(makeItem).join('')
+    : '<div style="padding:4px 16px;font-size:12px;color:var(--color-fg-muted)">No pinned projects yet</div>';
+  document.getElementById('sidebar-projects').innerHTML = rest.map(makeItem).join('');
 }
 
 function renderSidebarSimulators() {
   const el = document.getElementById('sidebar-simulators');
   if (!simulators.length) { el.innerHTML = '<div style="padding:4px 16px;font-size:12px;color:var(--color-fg-muted)">No simulators found</div>'; return; }
-  el.innerHTML = simulators.slice(0, 5).map(s => `
+  // Prefer booted, then iPhone 17 Pro, then iPhone 17 — keep only 2
+  const sorted = [...simulators].sort((a, b) => {
+    if (a.state === 'Booted' && b.state !== 'Booted') return -1;
+    if (b.state === 'Booted' && a.state !== 'Booted') return 1;
+    if (a.name.includes('Pro') && !b.name.includes('Pro')) return -1;
+    if (b.name.includes('Pro') && !a.name.includes('Pro')) return 1;
+    return 0;
+  });
+  el.innerHTML = sorted.slice(0, 2).map(s => `
     <button class="sidebar-item" onclick="bootSimulator('${s.udid}', '${s.name}')">
       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</span>
@@ -772,6 +1028,20 @@ function getFilteredProjects() {
   if (branchF === 'main') projects = projects.filter(p => ['main','master'].includes(p.git.branch));
   if (branchF === 'non-main') projects = projects.filter(p => isNonMain(p.git.branch));
 
+  // Sort
+  const sort = sortMode || 'default';
+  if (sort === 'name') {
+    projects.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sort === 'activity') {
+    projects.sort((a, b) => (b.git.commitTimestamp || 0) - (a.git.commitTimestamp || 0));
+  } else {
+    // Default: iOS first, then by name
+    projects.sort((a, b) => {
+      const order = { 'xcode-workspace': 0, 'xcode': 1, 'node': 2, 'flutter': 3, 'rust': 4, 'go': 5 };
+      return (order[a.type] ?? 9) - (order[b.type] ?? 9) || a.name.localeCompare(b.name);
+    });
+  }
+
   return projects;
 }
 
@@ -787,21 +1057,44 @@ function renderProjects() {
     return;
   }
 
-  grid.innerHTML = filtered.map(p => renderProjectCard(p)).join('');
+  const pinned = filtered.filter(p => pinnedIds.has(p.id));
+  const rest   = filtered.filter(p => !pinnedIds.has(p.id));
+  let html = '';
+  if (pinned.length) {
+    html += `<div class="pinned-divider"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Pinned</div>`;
+    html += pinned.map((p, i) => renderProjectCard(p, i)).join('');
+  }
+  if (rest.length) {
+    if (pinned.length) html += `<div class="unpinned-divider">All Projects</div>`;
+    html += rest.map((p, i) => renderProjectCard(p, pinned.length + i)).join('');
+  }
+  grid.innerHTML = html;
 }
 
-function renderProjectCard(p) {
+function renderProjectCard(p, idx = 0) {
   const isIos = p.type === 'xcode' || p.type === 'xcode-workspace';
   const score = p.appStore?.score ?? null;
   const scoreClass = score >= 80 ? 'high' : score >= 50 ? 'mid' : 'low';
   const versionText = p.version ? `v${p.version.version}` : '';
+  const delay = Math.min(idx * 45, 500);
 
   return `
-    <div class="project-card ${selectedProject?.id === p.id ? 'selected' : ''}" onclick="selectProject('${p.id}')">
+    <div class="project-card ${selectedProject?.id === p.id ? 'selected' : ''}" style="animation-delay:${delay}ms" onclick="selectProject('${p.id}')">
       <div class="card-header">
+        <button class="pin-btn ${pinnedIds.has(p.id) ? 'pinned' : ''}" title="${pinnedIds.has(p.id) ? 'Unpin' : 'Pin'} project"
+                onclick="event.stopPropagation();togglePin('${p.id}')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+               fill="${pinnedIds.has(p.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        </button>
         <div class="card-icon ${isIos ? 'xcode' : p.type}">
-          ${isIos ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/></svg>` :
-            `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.8"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`}
+          ${isIos
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/></svg>
+               <img class="card-icon-img" src="/api/project/${p.id}/icon" alt="" loading="lazy"
+                    onload="this.classList.add('loaded')" onerror="this.remove()" />`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.8"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`
+          }
         </div>
         <div class="card-title">
           <h3>${p.name}</h3>
@@ -837,6 +1130,20 @@ function renderProjectCard(p) {
             </div>
           </div>
         ` : ''}
+
+        ${p.requirementsSummary ? (() => {
+          const lines = p.requirementsSummary.split('\n').map(l => l.trim()).filter(Boolean);
+          const title = lines.find(l => l.startsWith('#'))?.replace(/^#+\s*/, '') || lines[0] || '';
+          const desc = lines.find(l => !l.startsWith('#') && l.length > 15) || '';
+          return `<div class="req-section">
+            <div class="req-section-header">
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              App Idea
+            </div>
+            ${title ? `<p class="req-title">${title}</p>` : ''}
+            ${desc ? `<p class="req-desc">${desc}</p>` : ''}
+          </div>`;
+        })() : ''}
       </div>
 
       <div class="card-actions" onclick="event.stopPropagation()">
@@ -884,7 +1191,28 @@ function selectProject(id) {
   selectedProject = p;
   renderProjects(); // re-render to highlight selected
 
+  const isIos = p.type === 'xcode' || p.type === 'xcode-workspace';
   document.getElementById('panel-title').textContent = p.name;
+
+  // Update panel icon
+  const iconEl = document.getElementById('panel-icon');
+  if (iconEl) {
+    const gradientClass = isIos ? 'xcode' : p.type;
+    // Apply matching gradient background
+    const gradients = {
+      xcode: 'linear-gradient(135deg,#1C7FF9 0%,#0A4CBF 100%)',
+      'xcode-workspace': 'linear-gradient(135deg,#1C7FF9 0%,#0A4CBF 100%)',
+      node: 'linear-gradient(135deg,#68a063 0%,#3d7a34 100%)',
+      flutter: 'linear-gradient(135deg,#54C5F8 0%,#2196F3 100%)',
+    };
+    iconEl.style.background = gradients[p.type] || 'var(--color-canvas-subtle)';
+    iconEl.innerHTML = isIos
+      ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/></svg>
+         <img class="card-icon-img" src="/api/project/${p.id}/icon" alt="" loading="lazy"
+              onload="this.classList.add('loaded')" onerror="this.remove()" />`
+      : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.8"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`;
+  }
+
   document.getElementById('detail-panel').classList.add('open');
   renderDetailPanel(p);
 }
@@ -943,21 +1271,47 @@ function renderDetailPanel(p) {
 
   // Simulator build section (iOS only)
   if (isIos && p.xcproj) {
+    // Pick best 2 simulators: booted first, then Pro, then iPhone
+    const simOptions = [...simulators]
+      .filter(s => s.name.includes('iPhone'))
+      .sort((a, b) => {
+        if (a.state === 'Booted' && b.state !== 'Booted') return -1;
+        if (b.state === 'Booted' && a.state !== 'Booted') return 1;
+        if (a.name.includes('Pro') && !b.name.includes('Pro')) return -1;
+        if (b.name.includes('Pro') && !a.name.includes('Pro')) return 1;
+        return 0;
+      })
+      .slice(0, 2);
+
     html += `<div class="panel-section">
-      <p class="panel-section-title">Build & Run</p>
-      <select class="simulator-select" id="sim-select-${p.id}">
-        ${simulators.map(s => `<option value="${s.udid}" ${s.state === 'Booted' ? 'selected' : ''}>${s.name} (${s.state})</option>`).join('')}
-      </select>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="action-btn primary" onclick="buildForSimulator('${p.id}', '${p.path}', '${p.xcproj}')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          Build & Run
-        </button>
-        <button class="action-btn" onclick="bootSimulator(document.getElementById('sim-select-${p.id}').value, '')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/></svg>
-          Boot Simulator
-        </button>
-      </div>
+      <p class="panel-section-title">Build &amp; Run</p>
+      ${simOptions.length ? `
+        <select class="simulator-select" id="sim-select-${p.id}">
+          ${simOptions.map(s => `<option value="${s.udid}" ${s.state === 'Booted' ? 'selected' : ''}>${s.name}${s.state === 'Booted' ? ' ●' : ''}</option>`).join('')}
+        </select>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <button class="action-btn primary" onclick="buildForSimulator('${p.id}', '${p.path}', '${p.xcproj}')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Run in Simulator
+          </button>
+          <button class="action-btn" onclick="bootSimulator(document.getElementById('sim-select-${p.id}').value, '')">Boot</button>
+        </div>
+      ` : ''}
+      ${devices.length ? `
+        <div style="margin-bottom:6px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--color-fg-muted)">Connected Devices</div>
+        ${devices.map(d => `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="device-badge" style="${d.offline ? 'opacity:0.6' : ''}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/></svg>
+              ${d.name}${d.offline ? ' (offline)' : ''}
+            </span>
+            <button class="action-btn primary" style="font-size:11px;padding:3px 8px" onclick="buildForDevice('${p.path}', '${p.xcproj}', '${d.udid}', '${d.name.replace(/'/g, "\\'")}')">
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Run on Device
+            </button>
+          </div>
+        `).join('')}
+      ` : `<div style="font-size:12px;color:var(--color-fg-muted);margin-top:4px">No devices connected — connect an iPhone via USB.</div>`}
     </div>`;
   }
 
@@ -985,10 +1339,20 @@ function renderDetailPanel(p) {
     </ul>
   </div>`;
 
+  // Requirements / App Idea (loaded async)
+  html += `<div class="panel-section" id="req-section-${p.id}" style="display:none">
+    <p class="panel-section-title" style="display:flex;align-items:center;gap:6px">
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      App Idea / Requirements
+    </p>
+    <div class="req-full" id="req-content-${p.id}"></div>
+  </div>`;
+
   document.getElementById('panel-body').innerHTML = html;
 
-  // Load commit log async
+  // Load async sections
   loadCommitLog(p.id);
+  loadRequirements(p.id);
 }
 
 async function loadCommitLog(projectId) {
@@ -1005,6 +1369,34 @@ async function loadCommitLog(projectId) {
       </li>
     `).join('');
   } catch { /* ignore */ }
+}
+
+async function loadRequirements(projectId) {
+  try {
+    const data = await api('GET', `/api/project/${projectId}/requirements`);
+    const section = document.getElementById(`req-section-${projectId}`);
+    const content = document.getElementById(`req-content-${projectId}`);
+    if (!section || !content || !data.ok || !data.content) return;
+    section.style.display = '';
+    content.innerHTML = renderMarkdown(data.content);
+  } catch { /* ignore */ }
+}
+
+// Minimal markdown → HTML renderer
+function renderMarkdown(md) {
+  return md
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .split('\n').map(line => {
+      if (/^### (.+)/.test(line)) return `<h3>${line.replace(/^### /, '')}</h3>`;
+      if (/^## (.+)/.test(line)) return `<h2>${line.replace(/^## /, '')}</h2>`;
+      if (/^# (.+)/.test(line)) return `<h1>${line.replace(/^# /, '')}</h1>`;
+      if (/^\s*[-*] (.+)/.test(line)) return `<li>${line.replace(/^\s*[-*] /, '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/`(.+?)`/g, '<code>$1</code>')}</li>`;
+      if (/^\s*\d+\. (.+)/.test(line)) return `<li>${line.replace(/^\s*\d+\. /, '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</li>`;
+      if (line.trim() === '') return '<br>';
+      return `<p>${line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/`(.+?)`/g, '<code>$1</code>')}</p>`;
+    })
+    .join('')
+    .replace(/(<li>.*<\/li>)+/g, m => `<ul>${m}</ul>`);
 }
 
 // ─────────────────────────────────────────────
@@ -1051,6 +1443,13 @@ async function buildForSimulator(projectId, projectPath, xcproj) {
     const data = await api('POST', '/api/build/simulator', { projectPath, xcproj, simulatorUdid: udid });
     toast('Build started — check Xcode for progress', 'success');
   } catch { toast('Failed to start build', 'error'); }
+}
+
+async function buildForDevice(projectPath, xcproj, deviceUdid, deviceName) {
+  try {
+    await api('POST', '/api/build/device', { projectPath, xcproj, deviceUdid });
+    toast(`Running on ${deviceName}…`, 'success');
+  } catch { toast('Failed to build for device', 'error'); }
 }
 
 async function gitPull(projectPath, name) {

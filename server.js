@@ -76,6 +76,50 @@ function findFiles(dir, ext, maxDepth = 4) {
   return results;
 }
 
+// Find best app icon image from AppIcon.appiconset
+function findAppIconPath(dir) {
+  const iconsetPath = findFile(dir, 'AppIcon.appiconset');
+  if (!iconsetPath) return null;
+  const contentsJson = path.join(iconsetPath, 'Contents.json');
+  if (!fileExists(contentsJson)) return null;
+  try {
+    const contents = JSON.parse(fs.readFileSync(contentsJson, 'utf8'));
+    const images = (contents.images || []).filter(i => i.filename);
+    images.sort((a, b) => {
+      const toPixels = img => {
+        const size = parseInt((img.size || '0x0').split('x')[0]);
+        const scale = parseInt((img.scale || '1x').replace('x', ''));
+        return size * scale;
+      };
+      return toPixels(b) - toPixels(a);
+    });
+    for (const img of images) {
+      const iconPath = path.join(iconsetPath, img.filename);
+      if (fileExists(iconPath)) return iconPath;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+// Find requirements.md / app idea*.md in project root
+function findRequirementsFile(dir) {
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const lower = entry.name.toLowerCase();
+      if (
+        (lower.startsWith('requirements') || lower.startsWith('app idea') ||
+         lower.startsWith('app_idea') || lower.startsWith('app-idea')) &&
+        (lower.endsWith('.md') || lower.endsWith('.txt'))
+      ) {
+        return path.join(dir, entry.name);
+      }
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
 // ─────────────────────────────────────────────
 // Project detection
 // ─────────────────────────────────────────────
@@ -207,6 +251,22 @@ function checkAppStoreReadiness(dir) {
   const versionInfo = getAppVersion(dir);
   checks.push({ id: 'version', label: `Version set (${versionInfo ? `v${versionInfo.version} build ${versionInfo.build}` : 'not set'})`, done: !!versionInfo, critical: true });
 
+  // SDK checks (RevenueCat, Crashlytics) — scan Podfile, Podfile.lock, Package.resolved
+  const podfilePath = findFile(dir, 'Podfile');
+  const podfileLockPath = findFile(dir, 'Podfile.lock');
+  const packageResolvedPath = findFile(dir, 'Package.resolved');
+  function grepSDK(pattern) {
+    return [podfilePath, podfileLockPath, packageResolvedPath].some(f => {
+      if (!f) return false;
+      try { return pattern.test(fs.readFileSync(f, 'utf8')); } catch { return false; }
+    });
+  }
+  const hasRevenueCat = grepSDK(/revenuecat|purchases-ios/i);
+  checks.push({ id: 'revenuecat', label: 'RevenueCat (in-app purchases)', done: hasRevenueCat, critical: false });
+
+  const hasCrashlytics = grepSDK(/crashlytics/i);
+  checks.push({ id: 'crashlytics', label: 'Crashlytics (crash reporting)', done: hasCrashlytics, critical: false });
+
   const done = checks.filter(c => c.done).length;
   const critical = checks.filter(c => c.critical);
   const criticalDone = critical.filter(c => c.done).length;
@@ -226,8 +286,8 @@ function scanProject(projectDir, name) {
 
   // Git info
   const branch = run('git rev-parse --abbrev-ref HEAD', projectDir);
-  const lastCommit = run('git log --oneline -1 --format="%h|%s|%cr"', projectDir);
-  const [commitHash, commitMsg, commitAge] = lastCommit ? lastCommit.split('|') : ['', '', ''];
+  const lastCommit = run('git log --oneline -1 --format="%h|%s|%cr|%ct"', projectDir);
+  const [commitHash, commitMsg, commitAge, commitTimestamp] = lastCommit ? lastCommit.split('|') : ['', '', '', '0'];
   const gitStatus = run('git status --porcelain', projectDir);
   const isDirty = gitStatus.length > 0;
   const changedFiles = gitStatus ? gitStatus.split('\n').filter(Boolean).length : 0;
@@ -240,6 +300,15 @@ function scanProject(projectDir, name) {
 
   const bundleId = (type === 'xcode' || type === 'xcode-workspace') ? getBundleId(projectDir) : null;
   const version = (type === 'xcode' || type === 'xcode-workspace') ? getAppVersion(projectDir) : null;
+
+  // Requirements / App Idea file
+  const requirementsPath = findRequirementsFile(projectDir);
+  let requirementsSummary = null;
+  if (requirementsPath) {
+    try {
+      requirementsSummary = fs.readFileSync(requirementsPath, 'utf8').slice(0, 1200).trim();
+    } catch { /* ignore */ }
+  }
 
   return {
     id: Buffer.from(projectDir).toString('base64'),
@@ -254,11 +323,14 @@ function scanProject(projectDir, name) {
       commitHash: commitHash.trim(),
       commitMsg,
       commitAge,
+      commitTimestamp: commitTimestamp ? parseInt(commitTimestamp) : 0,
       isDirty,
       changedFiles,
       remoteUrl,
     },
     appStore,
+    requirementsPath,
+    requirementsSummary,
     scannedAt: new Date().toISOString(),
   };
 }
@@ -289,10 +361,25 @@ function scanAllProjects() {
 
         const dir = path.join(root, entry.name);
         const type = detectProjectType(dir);
-        if (!type) continue;
+        if (type) {
+          const p = scanProject(dir, entry.name);
+          if (p) projects.push(p);
+          continue; // don't go deeper if this dir is itself a project
+        }
 
-        const p = scanProject(dir, entry.name);
-        if (p) projects.push(p);
+        // Scan one level deeper for nested projects (e.g. flipoff/ios/)
+        try {
+          const subEntries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const sub of subEntries) {
+            if (!sub.isDirectory()) continue;
+            if (SKIP_DIRS.has(sub.name)) continue;
+            const subDir = path.join(dir, sub.name);
+            const subType = detectProjectType(subDir);
+            if (!subType) continue;
+            const p = scanProject(subDir, `${entry.name} / ${sub.name}`);
+            if (p) projects.push(p);
+          }
+        } catch { /* ignore */ }
       }
     } catch (e) {
       console.error(`Error scanning ${root}:`, e.message);
@@ -306,6 +393,34 @@ function scanAllProjects() {
   });
 
   return projects;
+}
+
+// ─────────────────────────────────────────────
+// Connected Devices (physical)
+// ─────────────────────────────────────────────
+function getConnectedDevices() {
+  try {
+    const raw = execSync('xcrun xctrace list devices 2>/dev/null', { timeout: 10000, encoding: 'utf8' });
+    const devices = [];
+    let section = null; // 'online' | 'offline' | null
+    for (const line of raw.split('\n')) {
+      const trimmed = line.trim();
+      if (trimmed === '== Devices ==') { section = 'online'; continue; }
+      if (trimmed === '== Devices Offline ==') { section = 'offline'; continue; }
+      if (trimmed.startsWith('==')) { section = null; continue; }
+      if (!section || !trimmed) continue;
+      // UDIDs can be 25-char (00008140-00026C1114A2801C) or 36-char UUID
+      const match = trimmed.match(/^(.+?)\s+\(([0-9A-Fa-f-]{20,36})\)\s*$/);
+      if (match) {
+        const name = match[1].trim();
+        if (/macbook|imac|mac mini|mac pro|mac studio/i.test(name)) continue;
+        devices.push({ name, udid: match[2], type: 'device', offline: section === 'offline' });
+      }
+    }
+    return devices;
+  } catch {
+    return [];
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -406,6 +521,41 @@ app.get('/api/simulators', (req, res) => {
   res.json({ ok: true, simulators: sims });
 });
 
+app.get('/api/devices', (req, res) => {
+  const devices = getConnectedDevices();
+  res.json({ ok: true, devices });
+});
+
+app.post('/api/build/device', (req, res) => {
+  const { projectPath, xcproj, deviceUdid } = req.body;
+  if (!projectPath || !xcproj || !deviceUdid)
+    return res.status(400).json({ ok: false, error: 'projectPath, xcproj and deviceUdid required' });
+
+  const isWorkspace = xcproj.endsWith('.xcworkspace');
+  const projName = path.basename(xcproj, isWorkspace ? '.xcworkspace' : '.xcodeproj');
+  const flag = isWorkspace ? '-workspace' : '-project';
+
+  res.json({ ok: true, message: 'Build & run on device started — check Xcode for progress.' });
+
+  const cmd = `xcodebuild ${flag} "${xcproj}" -scheme "${projName}" -destination "id=${deviceUdid}" -configuration Debug build 2>&1 | tail -20`;
+  exec(cmd, { cwd: projectPath, timeout: 300000 }, (err, stdout) => {
+    console.log('Device build result:', stdout?.slice(-500));
+  });
+});
+
+app.get('/api/project/:id/requirements', (req, res) => {
+  const dir = Buffer.from(req.params.id, 'base64').toString('utf8');
+  if (!fs.existsSync(dir)) return res.status(404).json({ ok: false, error: 'Not found' });
+  const reqFile = findRequirementsFile(dir);
+  if (!reqFile) return res.json({ ok: true, content: null, filename: null });
+  try {
+    const content = fs.readFileSync(reqFile, 'utf8');
+    res.json({ ok: true, content, filename: path.basename(reqFile) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/simulator/boot', (req, res) => {
   const { udid } = req.body;
   if (!udid) return res.status(400).json({ ok: false, error: 'udid required' });
@@ -482,6 +632,15 @@ app.get('/api/git/branches/:id', (req, res) => {
     return { name, age, lastMsg, current: name === current };
   });
   res.json({ ok: true, current, branches });
+});
+
+app.get('/api/project/:id/icon', (req, res) => {
+  const dir = Buffer.from(req.params.id, 'base64').toString('utf8');
+  const isAllowed = CODE_ROOTS.some(root => path.normalize(dir).startsWith(path.normalize(root)));
+  if (!isAllowed || !fs.existsSync(dir)) return res.status(404).send('Not found');
+  const iconPath = findAppIconPath(dir);
+  if (!iconPath) return res.status(404).send('No icon');
+  res.sendFile(iconPath);
 });
 
 // ─────────────────────────────────────────────
