@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────
+# Dev Dashboard — macOS .app / Dock launcher
+# ─────────────────────────────────────────────────────────────
+
+DASHBOARD_DIR="/Users/Adi/Documents/Code/dev-dashboard"
+PORT=3131
+URL="http://localhost:${PORT}"
+LOG="/tmp/dev-dashboard-server.log"
+PID_FILE="/tmp/dev-dashboard.pid"
+
+# Ensure HOME is set — macOS GUI apps may launch with a stripped env
+: "${HOME:=/Users/$(id -un)}"
+
+# ── Find the node binary (GUI apps get PATH=/usr/bin:/bin only) ──────
+find_node() {
+  for candidate in \
+      /opt/homebrew/bin/node \
+      /usr/local/bin/node \
+      /usr/bin/node; do
+    [[ -x "$candidate" ]] && { printf '%s' "$candidate"; return; }
+  done
+  # nvm: pick the newest installed version
+  local nvm_root="$HOME/.nvm/versions/node"
+  if [[ -d "$nvm_root" ]]; then
+    local latest
+    latest=$(ls "$nvm_root" 2>/dev/null | sort -V | tail -1)
+    local candidate="$nvm_root/$latest/bin/node"
+    [[ -x "$candidate" ]] && { printf '%s' "$candidate"; return; }
+  fi
+}
+
+NODE=$(find_node)
+
+if [[ -z "$NODE" ]]; then
+  osascript -e 'display alert "Dev Dashboard" message "node not found.\nInstall Node.js via Homebrew or nvm and try again." as warning'
+  exit 1
+fi
+
+# ── Helper: is the server responding? ────────────────────────
+server_ready() {
+  curl -sf "${URL}/api/status" >/dev/null 2>&1
+}
+
+# ── Already running — just open the browser ──────────────────
+if server_ready; then
+  open "$URL"
+  exit 0
+fi
+
+# ── Launch server ─────────────────────────────────────────────
+# macOS GUI apps are assigned a cwd that Node ≥ v22 cannot read at
+# bootstrap (EPERM on getcwd / uv_cwd). Switching to /tmp before
+# spawning node fixes this; __dirname in server.js still resolves
+# correctly because the path passed to node is absolute.
+cd /tmp
+
+"$NODE" "$DASHBOARD_DIR/server.js" >> "$LOG" 2>&1 &
+SERVER_PID=$!
+echo "$SERVER_PID" > "$PID_FILE"
+
+# ── Poll until ready (up to 15 s) ────────────────────────────
+READY=0
+for i in $(seq 1 60); do
+  if server_ready; then
+    READY=1
+    break
+  fi
+  sleep 0.25
+done
+
+if [[ "$READY" -eq 0 ]]; then
+  osascript -e "display notification \"Server failed to start — check $LOG\" with title \"Dev Dashboard\""
+  osascript -e "display alert \"Dev Dashboard\" message \"Server did not start in time.\nCheck log: $LOG\" as warning"
+  exit 1
+fi
+
+open "$URL"

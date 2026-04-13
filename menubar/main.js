@@ -7,6 +7,39 @@ const http = require('http');
 const zlib = require('zlib');
 
 // ─────────────────────────────────────────────
+// Resolve node executable at startup (GUI apps get a minimal PATH)
+// ─────────────────────────────────────────────
+function resolveNodePath() {
+  // Extra dirs beyond the default macOS GUI app PATH
+  const extraDirs = [
+    '/usr/local/bin',
+    '/opt/homebrew/bin',
+    '/opt/homebrew/sbin',
+  ];
+
+  // Add the latest nvm-managed node if present
+  try {
+    const nvmDir = path.join(require('os').homedir(), '.nvm', 'versions', 'node');
+    const { readdirSync } = require('fs');
+    const versions = readdirSync(nvmDir).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    if (versions.length) extraDirs.push(path.join(nvmDir, versions[0], 'bin'));
+  } catch { /* nvm not installed */ }
+
+  // Augment PATH for all child processes
+  const augmented = `${process.env.PATH || ''}:${extraDirs.join(':')}`;
+  process.env.PATH = augmented;
+
+  // Return first resolvable node binary
+  for (const dir of extraDirs) {
+    const candidate = path.join(dir, 'node');
+    try { require('fs').accessSync(candidate, require('fs').constants.X_OK); return candidate; } catch { /* skip */ }
+  }
+  return 'node'; // fallback — hope it's on PATH
+}
+
+const NODE_BIN = resolveNodePath();
+
+// ─────────────────────────────────────────────
 // Config
 // ─────────────────────────────────────────────
 const SERVER_PORT = 3131;
@@ -98,9 +131,10 @@ function startServer() {
         return;
       }
 
-      serverProcess = spawn('node', [SERVER_PATH], {
+      serverProcess = spawn(NODE_BIN, [SERVER_PATH], {
         detached: false,
         stdio: ['ignore', 'pipe', 'pipe'],
+        cwd: path.dirname(SERVER_PATH),
       });
 
       serverProcess.stdout.on('data', (d) => console.log('[server]', d.toString().trim()));
@@ -112,11 +146,11 @@ function startServer() {
         updateMenu();
       });
 
-      // Poll until ready (max 10s)
+      // Poll until ready (max 20s)
       let attempts = 0;
       const poll = setInterval(() => {
         checkServerRunning().then((ok) => {
-          if (ok || ++attempts >= 40) {
+          if (ok || ++attempts >= 80) {
             clearInterval(poll);
             serverRunning = ok;
             resolve(ok);
