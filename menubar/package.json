@@ -1,0 +1,27 @@
+{
+  "name": "dev-dashboard-tray",
+  "version": "1.0.0",
+  "description": "macOS menubar utility for Dev Dashboard",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --mac --dir",
+    "dist": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.adi.devdashboard",
+    "productName": "Dev Dashboard",
+    "asar": true,
+    "files": ["main.js"],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] }
+      ]
+    }
+  }
+}

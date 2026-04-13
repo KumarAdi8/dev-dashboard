@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en" data-color-mode="auto" data-light-theme="light" data-dark-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dev Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/@primer/css@21.0.0/dist/primer.css" />
+  <style>
+    :root {
+      --dashboard-bg: var(--color-canvas-subtle);
+      --card-radius: 10px;
+      --header-h: 56px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--dashboard-bg);
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .dashboard-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--color-canvas-default);
+      border-bottom: 1px solid var(--color-border-default);
+      height: var(--header-h);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 16px;
+    }
+    .dashboard-header .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--color-fg-default);
+      text-decoration: none;
+    }
+    .dashboard-header .logo svg { color: var(--color-accent-fg); }
+    .header-meta {
+      font-size: 12px;
+      color: var(--color-fg-muted);
+    }
+    .header-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    /* ── Layout ─────────────────────────────── */
+    .dashboard-layout {
+      display: flex;
+      height: calc(100vh - var(--header-h));
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ─────────────────────────────── */
+    .sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--color-canvas-default);
+      border-right: 1px solid var(--color-border-default);
+      overflow-y: auto;
+      padding: 16px 0;
+    }
+    .sidebar-section-label {
+      padding: 4px 16px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-fg-muted);
+    }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      font-size: 13px;
+      color: var(--color-fg-default);
+      cursor: pointer;
+      border-radius: 0;
+      transition: background 0.1s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      text-decoration: none;
+    }
+    .sidebar-item:hover { background: var(--color-canvas-subtle); }
+    .sidebar-item.active { background: var(--color-accent-subtle); color: var(--color-accent-fg); font-weight: 500; }
+    .sidebar-item .dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .sidebar-item .item-badge {
+      margin-left: auto;
+      font-size: 11px;
+      background: var(--color-neutral-muted);
+      border-radius: 10px;
+      padding: 1px 7px;
+      color: var(--color-fg-muted);
+    }
+    .sidebar-item.active .item-badge {
+      background: var(--color-accent-subtle);
+      color: var(--color-accent-fg);
+    }
+    .sidebar-divider { height: 1px; background: var(--color-border-default); margin: 8px 16px; }
+
+    /* ── Main content ─────────────────────────── */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    /* ── Filter bar ─────────────────────────── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .filter-bar input {
+      flex: 1;
+      min-width: 200px;
+      max-width: 320px;
+    }
+
+    /* ── Project grid ─────────────────────────── */
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Project card ─────────────────────────── */
+    .project-card {
+      background: var(--color-canvas-default);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--card-radius);
+      overflow: hidden;
+      transition: box-shadow 0.15s, border-color 0.15s;
+      cursor: pointer;
+    }
+    .project-card:hover {
+      box-shadow: var(--color-shadow-medium);
+      border-color: var(--color-border-muted);
+    }
+    .project-card.selected {
+      border-color: var(--color-accent-fg);
+      box-shadow: 0 0 0 2px var(--color-accent-muted);
+    }
+
+    .card-header {
+      padding: 14px 16px 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      border-bottom: 1px solid var(--color-border-subtle);
+    }
+    .card-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 18px;
+    }
+    .card-icon.xcode { background: linear-gradient(135deg, #1C7FF9 0%, #0A4CBF 100%); }
+    .card-icon.node { background: linear-gradient(135deg, #68a063 0%, #3d7a34 100%); }
+    .card-icon.flutter { background: linear-gradient(135deg, #54C5F8 0%, #2196F3 100%); }
+
+    .card-title { flex: 1; min-width: 0; }
+    .card-title h3 {
+      margin: 0 0 3px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-fg-default);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-title .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .type-badge {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .type-badge.xcode, .type-badge.xcode-workspace { background: #dbeafe; color: #1d4ed8; }
+    .type-badge.node { background: #dcfce7; color: #15803d; }
+    .type-badge.flutter { background: #e0f2fe; color: #0369a1; }
+    [data-color-mode="dark"] .type-badge.xcode, [data-color-mode="dark"] .type-badge.xcode-workspace { background: #1e3a5f; color: #60a5fa; }
+    [data-color-mode="dark"] .type-badge.node { background: #14532d; color: #86efac; }
+
+    .git-badge {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--color-neutral-muted);
+      color: var(--color-fg-muted);
+    }
+    .git-badge.dirty { background: #fef3c7; color: #92400e; }
+    [data-color-mode="dark"] .git-badge.dirty { background: #451a03; color: #fcd34d; }
+
+    .card-body { padding: 12px 16px; }
+
+    /* git status row */
+    .git-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: var(--color-fg-muted);
+    }
+    .git-row .branch-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--color-canvas-subtle);
+      border: 1px solid var(--color-border-default);
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      color: var(--color-fg-default);
+    }
+    .commit-text {
+      font-size: 12px;
+      color: var(--color-fg-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .commit-hash {
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      color: var(--color-accent-fg);
+    }
+
+    /* Readiness bar */
+    .readiness-section { margin-bottom: 10px; }
+    .readiness-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--color-fg-muted);
+      margin-bottom: 5px;
+    }
+    .readiness-score { font-weight: 600; }
+    .readiness-score.high { color: var(--color-success-fg); }
+    .readiness-score.mid { color: var(--color-attention-fg); }
+    .readiness-score.low { color: var(--color-danger-fg); }
+    .progress-bar {
+      height: 5px;
+      border-radius: 3px;
+      background: var(--color-canvas-subtle);
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+    .progress-fill.high { background: var(--color-success-emphasis); }
+    .progress-fill.mid { background: var(--color-attention-emphasis); }
+    .progress-fill.low { background: var(--color-danger-emphasis); }
+
+    /* Quick actions */
+    .card-actions {
+      padding: 10px 16px;
+      background: var(--color-canvas-subtle);
+      border-top: 1px solid var(--color-border-subtle);
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      border: 1px solid var(--color-border-default);
+      background: var(--color-canvas-default);
+      color: var(--color-fg-default);
+      cursor: pointer;
+      transition: background 0.1s, border-color 0.1s;
+      white-space: nowrap;
+    }
+    .action-btn:hover { background: var(--color-canvas-subtle); border-color: var(--color-border-muted); }
+    .action-btn.primary { background: var(--color-accent-emphasis); border-color: transparent; color: #fff; }
+    .action-btn.primary:hover { background: var(--color-accent-fg); }
+    .action-btn.danger { color: var(--color-danger-fg); }
+    .action-btn.danger:hover { background: var(--color-danger-subtle); border-color: var(--color-danger-muted); }
+    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Detail panel ─────────────────────────── */
+    .detail-panel {
+      width: 380px;
+      flex-shrink: 0;
+      background: var(--color-canvas-default);
+      border-left: 1px solid var(--color-border-default);
+      overflow-y: auto;
+      display: none;
+    }
+    .detail-panel.open { display: block; }
+    .panel-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--color-border-default);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .panel-header h2 { margin: 0; font-size: 15px; font-weight: 600; flex: 1; }
+    .panel-section { padding: 16px; border-bottom: 1px solid var(--color-border-subtle); }
+    .panel-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-fg-muted);
+      margin: 0 0 10px;
+    }
+
+    /* Checklist */
+    .checklist { list-style: none; margin: 0; padding: 0; }
+    .checklist li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--color-border-subtle);
+    }
+    .checklist li:last-child { border-bottom: none; }
+    .check-icon { flex-shrink: 0; width: 16px; height: 16px; }
+    .check-icon.done { color: var(--color-success-fg); }
+    .check-icon.pending { color: var(--color-fg-subtle); }
+    .check-icon.critical-pending { color: var(--color-danger-fg); }
+    .check-label { flex: 1; }
+    .check-label.done { color: var(--color-fg-default); }
+    .check-label.pending { color: var(--color-fg-muted); }
+    .critical-tag {
+      font-size: 10px;
+      background: var(--color-danger-subtle);
+      color: var(--color-danger-fg);
+      border-radius: 3px;
+      padding: 1px 5px;
+    }
+
+    /* Simulator picker */
+    .simulator-select {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--color-border-default);
+      border-radius: 6px;
+      background: var(--color-canvas-default);
+      color: var(--color-fg-default);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    /* Commit log */
+    .commit-log { list-style: none; margin: 0; padding: 0; }
+    .commit-log li {
+      display: flex;
+      gap: 8px;
+      padding: 5px 0;
+      font-size: 12px;
+      border-bottom: 1px solid var(--color-border-subtle);
+      align-items: flex-start;
+    }
+    .commit-log li:last-child { border-bottom: none; }
+    .log-hash { font-family: ui-monospace, monospace; color: var(--color-accent-fg); flex-shrink: 0; }
+    .log-msg { flex: 1; color: var(--color-fg-default); }
+    .log-age { flex-shrink: 0; color: var(--color-fg-muted); font-size: 11px; }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--color-fg-default);
+      color: var(--color-canvas-default);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      animation: slideIn 0.2s ease;
+      max-width: 320px;
+    }
+    .toast.success { background: var(--color-success-emphasis); }
+    .toast.error { background: var(--color-danger-emphasis); }
+    @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* Loading state */
+    .skeleton {
+      background: linear-gradient(90deg, var(--color-canvas-subtle) 25%, var(--color-canvas-default) 50%, var(--color-canvas-subtle) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .sidebar { width: 200px; }
+      .detail-panel { width: 320px; }
+    }
+    @media (max-width: 640px) {
+      .sidebar { display: none; }
+      .detail-panel { display: none !important; }
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px 24px;
+      color: var(--color-fg-muted);
+      text-align: center;
+    }
+    .empty-state svg { opacity: 0.3; margin-bottom: 16px; }
+
+    /* Stats row */
+    .stats-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stat-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: var(--color-canvas-default);
+      border: 1px solid var(--color-border-default);
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--color-fg-muted);
+    }
+    .stat-chip span { font-weight: 600; color: var(--color-fg-default); }
+
+    .version-chip {
+      font-size: 10px;
+      font-family: ui-monospace, monospace;
+      background: var(--color-canvas-subtle);
+      color: var(--color-fg-muted);
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    /* Branch copy button */
+    .branch-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--color-canvas-subtle);
+      border: 1px solid var(--color-border-default);
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      color: var(--color-fg-default);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .branch-chip:hover { background: var(--color-border-default); }
+    .branch-chip.non-main { border-color: var(--color-attention-muted); color: var(--color-attention-fg); background: var(--color-attention-subtle); }
+    [data-color-mode="dark"] .branch-chip.non-main { background: #2d1e00; }
+
+    /* Stale branch badge */
+    .stale-badge {
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--color-danger-subtle);
+      color: var(--color-danger-fg);
+    }
+
+    /* Diff modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-backdrop.hidden { display: none; }
+    .modal {
+      background: var(--color-canvas-default);
+      border: 1px solid var(--color-border-default);
+      border-radius: 12px;
+      width: 560px; max-height: 80vh;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--color-border-default);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .modal-header h3 { margin: 0; font-size: 15px; font-weight: 600; flex: 1; }
+    .modal-body { overflow-y: auto; flex: 1; padding: 16px 20px; }
+    .diff-file-list { list-style: none; margin: 0; padding: 0; }
+    .diff-file-list li {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px; border-radius: 5px; font-size: 12px;
+      font-family: ui-monospace, monospace;
+    }
+    .diff-file-list li:hover { background: var(--color-canvas-subtle); }
+    .diff-status {
+      font-size: 11px; font-weight: 700; width: 16px; text-align: center;
+      flex-shrink: 0;
+    }
+    .diff-status.M { color: var(--color-attention-fg); }
+    .diff-status.A { color: var(--color-success-fg); }
+    .diff-status.D { color: var(--color-danger-fg); }
+    .diff-status.R { color: var(--color-accent-fg); }
+    .diff-status.? { color: var(--color-fg-muted); }
+
+    /* Branch list table */
+    .branch-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .branch-table td { padding: 5px 6px; border-bottom: 1px solid var(--color-border-subtle); }
+    .branch-table tr:last-child td { border-bottom: none; }
+    .branch-table .current-branch { color: var(--color-success-fg); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="dashboard-header">
+  <a class="logo" href="#">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 0-2-2V9m0 0h18" />
+    </svg>
+    Dev Dashboard
+  </a>
+  <span class="header-meta" id="scan-time">Scanning…</span>
+  <div class="header-actions">
+    <button class="action-btn" id="theme-toggle" onclick="toggleTheme()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    </button>
+    <button class="action-btn primary" id="refresh-btn" onclick="loadProjects()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      Refresh
+    </button>
+  </div>
+</header>
+
+<!-- Layout -->
+<div class="dashboard-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-section-label">Projects</div>
+    <div id="sidebar-projects"></div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">Simulators</div>
+    <div id="sidebar-simulators"></div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">Quick Links</div>
+    <a class="sidebar-item" onclick="filterByType('xcode')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      iOS Projects
+    </a>
+    <a class="sidebar-item" onclick="filterByReadiness()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      High Readiness (≥80%)
+    </a>
+    <a class="sidebar-item" onclick="filterByDirty()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Uncommitted Changes
+    </a>
+    <a class="sidebar-item" onclick="filterByNonMain()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+      Non-main Branches
+    </a>
+    <a class="sidebar-item" onclick="clearFilter()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      All Projects
+    </a>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content" id="main-content">
+    <div class="filter-bar">
+      <input type="search" class="form-control input-sm" id="search-input" placeholder="Filter projects…" oninput="renderProjects()" />
+      <select class="form-select input-sm" id="type-filter" onchange="renderProjects()">
+        <option value="">All types</option>
+        <option value="xcode">iOS (Xcode)</option>
+        <option value="xcode-workspace">iOS (Workspace)</option>
+        <option value="node">Node.js</option>
+      </select>
+      <select class="form-select input-sm" id="branch-filter" onchange="renderProjects()">
+        <option value="">All branches</option>
+        <option value="main">main / master</option>
+        <option value="non-main">Non-main</option>
+      </select>
+    </div>
+
+    <div class="stats-row" id="stats-row"></div>
+
+    <div class="project-grid" id="project-grid">
+      <!-- skeleton -->
+      <div class="project-card"><div class="card-header"><div class="skeleton" style="width:36px;height:36px;border-radius:8px"></div><div class="flex-1" style="flex:1;padding-left:8px"><div class="skeleton" style="height:14px;width:60%;margin-bottom:8px"></div><div class="skeleton" style="height:12px;width:40%"></div></div></div><div class="card-body"><div class="skeleton" style="height:12px;margin-bottom:8px"></div><div class="skeleton" style="height:5px;border-radius:3px"></div></div></div>
+      <div class="project-card"><div class="card-header"><div class="skeleton" style="width:36px;height:36px;border-radius:8px"></div><div class="flex-1" style="flex:1;padding-left:8px"><div class="skeleton" style="height:14px;width:60%;margin-bottom:8px"></div><div class="skeleton" style="height:12px;width:40%"></div></div></div><div class="card-body"><div class="skeleton" style="height:12px;margin-bottom:8px"></div><div class="skeleton" style="height:5px;border-radius:3px"></div></div></div>
+      <div class="project-card"><div class="card-header"><div class="skeleton" style="width:36px;height:36px;border-radius:8px"></div><div class="flex-1" style="flex:1;padding-left:8px"><div class="skeleton" style="height:14px;width:60%;margin-bottom:8px"></div><div class="skeleton" style="height:12px;width:40%"></div></div></div><div class="card-body"><div class="skeleton" style="height:12px;margin-bottom:8px"></div><div class="skeleton" style="height:5px;border-radius:3px"></div></div></div>
+    </div>
+  </main>
+
+  <!-- Detail panel -->
+  <aside class="detail-panel" id="detail-panel">
+    <div class="panel-header">
+      <h2 id="panel-title">Project Details</h2>
+      <button class="action-btn" onclick="closePanel()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="panel-body"></div>
+  </aside>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+let allProjects = [];
+let simulators = [];
+let selectedProject = null;
+let activeFilter = null;
+
+// ─────────────────────────────────────────────
+// Boot
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadProjects();
+  loadSimulators();
+
+  // Auto-refresh every 60s
+  setInterval(loadProjects, 60000);
+});
+
+// ─────────────────────────────────────────────
+// Data loading
+// ─────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`http://localhost:3131${path}`, opts);
+  return res.json();
+}
+
+async function loadProjects() {
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = true;
+  try {
+    const data = await api('GET', '/api/projects');
+    if (data.ok) {
+      allProjects = data.projects;
+      document.getElementById('scan-time').textContent = `Last scan: ${new Date(data.scannedAt).toLocaleTimeString()}`;
+      renderSidebarProjects();
+      renderStats();
+      renderProjects();
+    }
+  } catch (e) {
+    toast('Server unreachable. Is the dashboard running?', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function loadSimulators() {
+  try {
+    const data = await api('GET', '/api/simulators');
+    if (data.ok) {
+      simulators = data.simulators;
+      renderSidebarSimulators();
+    }
+  } catch { /* ignore */ }
+}
+
+// ─────────────────────────────────────────────
+// Rendering: sidebar
+// ─────────────────────────────────────────────
+function renderSidebarProjects() {
+  const el = document.getElementById('sidebar-projects');
+  el.innerHTML = allProjects.map(p => `
+    <button class="sidebar-item" onclick="selectProject('${p.id}')">
+      <span class="dot" style="background:${typeColor(p.type)}"></span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
+      ${p.git.isDirty ? `<span class="item-badge" style="background:#fef3c7;color:#92400e">~${p.git.changedFiles}</span>` : ''}
+    </button>
+  `).join('');
+}
+
+function renderSidebarSimulators() {
+  const el = document.getElementById('sidebar-simulators');
+  if (!simulators.length) { el.innerHTML = '<div style="padding:4px 16px;font-size:12px;color:var(--color-fg-muted)">No simulators found</div>'; return; }
+  el.innerHTML = simulators.slice(0, 5).map(s => `
+    <button class="sidebar-item" onclick="bootSimulator('${s.udid}', '${s.name}')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</span>
+      <span class="item-badge" style="background:${s.state === 'Booted' ? '#dcfce7' : 'var(--color-neutral-muted)'};color:${s.state === 'Booted' ? '#15803d' : 'var(--color-fg-muted)'};">${s.state}</span>
+    </button>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────
+// Stats row
+// ─────────────────────────────────────────────
+function renderStats() {
+  const total = allProjects.length;
+  const xcode = allProjects.filter(p => p.type === 'xcode' || p.type === 'xcode-workspace').length;
+  const dirty = allProjects.filter(p => p.git.isDirty).length;
+  const readyCount = allProjects.filter(p => p.appStore && p.appStore.score >= 80).length;
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-chip"><span>${total}</span> total projects</div>
+    <div class="stat-chip"><span>${xcode}</span> iOS apps</div>
+    ${dirty ? `<div class="stat-chip"><span style="color:var(--color-attention-fg)">${dirty}</span> with uncommitted changes</div>` : ''}
+    ${xcode ? `<div class="stat-chip"><span style="color:var(--color-success-fg)">${readyCount}</span> ready for App Store</div>` : ''}
+  `;
+}
+
+// ─────────────────────────────────────────────
+// Project grid
+// ─────────────────────────────────────────────
+function getFilteredProjects() {
+  let projects = [...allProjects];
+  const q = document.getElementById('search-input')?.value?.toLowerCase() || '';
+  const type = document.getElementById('type-filter')?.value || '';
+
+  if (q) projects = projects.filter(p => p.name.toLowerCase().includes(q) || (p.bundleId || '').toLowerCase().includes(q));
+  if (type) projects = projects.filter(p => p.type === type);
+  if (activeFilter === 'xcode') projects = projects.filter(p => p.type === 'xcode' || p.type === 'xcode-workspace');
+  if (activeFilter === 'readiness') projects = projects.filter(p => p.appStore && p.appStore.score >= 80);
+  if (activeFilter === 'dirty') projects = projects.filter(p => p.git.isDirty);
+
+  return projects;
+}
+
+function renderProjects() {
+  const grid = document.getElementById('project-grid');
+  const filtered = getFilteredProjects();
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M20 13V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7m16 0v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5M12 12v6m0 0-2-2m2 2 2-2"/></svg>
+      <p>No projects match your filter.</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => renderProjectCard(p)).join('');
+}
+
+function renderProjectCard(p) {
+  const isIos = p.type === 'xcode' || p.type === 'xcode-workspace';
+  const score = p.appStore?.score ?? null;
+  const scoreClass = score >= 80 ? 'high' : score >= 50 ? 'mid' : 'low';
+  const versionText = p.version ? `v${p.version.version}` : '';
+
+  return `
+    <div class="project-card ${selectedProject?.id === p.id ? 'selected' : ''}" onclick="selectProject('${p.id}')">
+      <div class="card-header">
+        <div class="card-icon ${isIos ? 'xcode' : p.type}">
+          ${isIos ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/></svg>` :
+            `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.8"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`}
+        </div>
+        <div class="card-title">
+          <h3>${p.name}</h3>
+          <div class="card-meta">
+            <span class="type-badge ${p.type}">${p.type === 'xcode-workspace' ? 'iOS ws' : p.type}</span>
+            ${versionText ? `<span class="version-chip">${versionText}</span>` : ''}
+            <span class="git-badge ${p.git.isDirty ? 'dirty' : ''}">${p.git.isDirty ? `~${p.git.changedFiles} changes` : 'clean'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="git-row">
+          <span class="branch-chip">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            ${p.git.branch || 'unknown'}
+          </span>
+          ${p.git.commitAge ? `<span class="header-meta">${p.git.commitAge}</span>` : ''}
+        </div>
+        ${p.git.commitMsg ? `<div class="commit-text" title="${p.git.commitMsg}">
+          <span class="commit-hash">${p.git.commitHash}</span> ${p.git.commitMsg}
+        </div>` : ''}
+
+        ${isIos && score !== null ? `
+          <div class="readiness-section" style="margin-top:10px">
+            <div class="readiness-label">
+              <span>App Store Readiness</span>
+              <span class="readiness-score ${scoreClass}">${score}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill ${scoreClass}" style="width:${score}%"></div>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="card-actions" onclick="event.stopPropagation()">
+        ${isIos && p.xcproj ? `
+          <button class="action-btn primary" onclick="openXcode('${p.xcproj}')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="8 12 12 8 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>
+            Xcode
+          </button>
+        ` : ''}
+        <button class="action-btn" onclick="openVSCode('${p.path}')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          VS Code
+        </button>
+        <button class="action-btn" onclick="openFinder('${p.path}')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Finder
+        </button>
+        ${isIos && p.xcproj ? `
+          <button class="action-btn" onclick="showBuildPanel('${p.id}')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Simulator
+          </button>
+        ` : ''}
+        <button class="action-btn" onclick="gitPull('${p.path}', '${p.name}')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Pull
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────
+// Detail panel
+// ─────────────────────────────────────────────
+function selectProject(id) {
+  const p = allProjects.find(x => x.id === id);
+  if (!p) return;
+  selectedProject = p;
+  renderProjects(); // re-render to highlight selected
+
+  document.getElementById('panel-title').textContent = p.name;
+  document.getElementById('detail-panel').classList.add('open');
+  renderDetailPanel(p);
+}
+
+function closePanel() {
+  selectedProject = null;
+  document.getElementById('detail-panel').classList.remove('open');
+  renderProjects();
+}
+
+function renderDetailPanel(p) {
+  const isIos = p.type === 'xcode' || p.type === 'xcode-workspace';
+  let html = '';
+
+  // Info section
+  html += `<div class="panel-section">
+    <p class="panel-section-title">Project Info</p>
+    <table style="width:100%;font-size:13px;border-collapse:collapse">
+      <tr><td style="color:var(--color-fg-muted);padding:3px 0;width:110px">Type</td><td><span class="type-badge ${p.type}">${p.type}</span></td></tr>
+      ${p.bundleId ? `<tr><td style="color:var(--color-fg-muted);padding:3px 0">Bundle ID</td><td style="font-family:ui-monospace,monospace;font-size:11px">${p.bundleId}</td></tr>` : ''}
+      ${p.version ? `<tr><td style="color:var(--color-fg-muted);padding:3px 0">Version</td><td>v${p.version.version} (${p.version.build})</td></tr>` : ''}
+      <tr><td style="color:var(--color-fg-muted);padding:3px 0">Branch</td><td style="font-family:ui-monospace,monospace;font-size:11px">${p.git.branch}</td></tr>
+      ${p.git.commitMsg ? `<tr><td style="color:var(--color-fg-muted);padding:3px 0">Last commit</td><td>${p.git.commitHash} · ${p.git.commitAge}</td></tr>` : ''}
+      <tr><td style="color:var(--color-fg-muted);padding:3px 0">Working tree</td><td>${p.git.isDirty ? `<span style="color:var(--color-attention-fg)">~${p.git.changedFiles} file(s) changed</span>` : '<span style="color:var(--color-success-fg)">Clean</span>'}</td></tr>
+    </table>
+  </div>`;
+
+  // App Store Readiness
+  if (isIos && p.appStore) {
+    const { checks, score, done, total } = p.appStore;
+    const scoreClass = score >= 80 ? 'high' : score >= 50 ? 'mid' : 'low';
+    html += `<div class="panel-section">
+      <p class="panel-section-title">App Store Readiness</p>
+      <div class="readiness-label" style="margin-bottom:8px">
+        <span style="font-size:13px">${done} of ${total} checks passed</span>
+        <span class="readiness-score ${scoreClass}" style="font-size:18px;font-weight:700">${score}%</span>
+      </div>
+      <div class="progress-bar" style="height:8px;margin-bottom:14px">
+        <div class="progress-fill ${scoreClass}" style="width:${score}%"></div>
+      </div>
+      <ul class="checklist">
+        ${checks.map(c => `
+          <li>
+            <svg class="check-icon ${c.done ? 'done' : c.critical ? 'critical-pending' : 'pending'}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              ${c.done
+                ? '<polyline points="20 6 9 17 4 12"/>'
+                : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+            </svg>
+            <span class="check-label ${c.done ? 'done' : 'pending'}">${c.label}</span>
+            ${!c.done && c.critical ? '<span class="critical-tag">critical</span>' : ''}
+          </li>
+        `).join('')}
+      </ul>
+    </div>`;
+  }
+
+  // Simulator build section (iOS only)
+  if (isIos && p.xcproj) {
+    html += `<div class="panel-section">
+      <p class="panel-section-title">Build & Run</p>
+      <select class="simulator-select" id="sim-select-${p.id}">
+        ${simulators.map(s => `<option value="${s.udid}" ${s.state === 'Booted' ? 'selected' : ''}>${s.name} (${s.state})</option>`).join('')}
+      </select>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="action-btn primary" onclick="buildForSimulator('${p.id}', '${p.path}', '${p.xcproj}')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Build & Run
+        </button>
+        <button class="action-btn" onclick="bootSimulator(document.getElementById('sim-select-${p.id}').value, '')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/></svg>
+          Boot Simulator
+        </button>
+      </div>
+    </div>`;
+  }
+
+  // Quick actions
+  html += `<div class="panel-section">
+    <p class="panel-section-title">Actions</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${isIos && p.xcproj ? `<button class="action-btn primary" onclick="openXcode('${p.xcproj}')">Open Xcode</button>` : ''}
+      <button class="action-btn" onclick="openVSCode('${p.path}')">Open VS Code</button>
+      <button class="action-btn" onclick="openFinder('${p.path}')">Open Finder</button>
+      <button class="action-btn" onclick="openTerminal('${p.path}')">Open Terminal</button>
+      <button class="action-btn" onclick="gitPull('${p.path}', '${p.name}')">Git Pull</button>
+    </div>
+  </div>`;
+
+  // Commit log (loaded async)
+  html += `<div class="panel-section">
+    <p class="panel-section-title">Recent Commits</p>
+    <ul class="commit-log" id="commit-log-${p.id}">
+      <li><div class="skeleton" style="height:12px;width:100%"></div></li>
+      <li><div class="skeleton" style="height:12px;width:80%"></div></li>
+      <li><div class="skeleton" style="height:12px;width:90%"></div></li>
+    </ul>
+  </div>`;
+
+  document.getElementById('panel-body').innerHTML = html;
+
+  // Load commit log async
+  loadCommitLog(p.id);
+}
+
+async function loadCommitLog(projectId) {
+  try {
+    const data = await api('GET', `/api/git/log/${projectId}`);
+    const el = document.getElementById(`commit-log-${projectId}`);
+    if (!el || !data.ok) return;
+    if (!data.commits.length) { el.innerHTML = '<li style="color:var(--color-fg-muted);font-size:12px">No commits</li>'; return; }
+    el.innerHTML = data.commits.map(c => `
+      <li>
+        <span class="log-hash">${c.hash}</span>
+        <span class="log-msg">${c.msg || ''}</span>
+        <span class="log-age">${c.age || ''}</span>
+      </li>
+    `).join('');
+  } catch { /* ignore */ }
+}
+
+// ─────────────────────────────────────────────
+// Actions
+// ─────────────────────────────────────────────
+async function openXcode(xcproj) {
+  try {
+    await api('POST', '/api/open/xcode', { projectPath: xcproj });
+    toast('Opening in Xcode…', 'success');
+  } catch { toast('Failed to open Xcode', 'error'); }
+}
+
+async function openVSCode(projectPath) {
+  try {
+    await api('POST', '/api/open/vscode', { projectPath });
+    toast('Opening in VS Code…', 'success');
+  } catch { toast('Failed to open VS Code', 'error'); }
+}
+
+async function openFinder(projectPath) {
+  try {
+    await api('POST', '/api/open/finder', { projectPath });
+  } catch { toast('Failed to open Finder', 'error'); }
+}
+
+async function openTerminal(projectPath) {
+  try {
+    await api('POST', '/api/open/terminal', { projectPath });
+  } catch { toast('Failed to open Terminal', 'error'); }
+}
+
+async function bootSimulator(udid, name) {
+  try {
+    await api('POST', '/api/simulator/boot', { udid });
+    toast(`Booting ${name || 'simulator'}…`, 'success');
+    setTimeout(loadSimulators, 3000);
+  } catch { toast('Failed to boot simulator', 'error'); }
+}
+
+async function buildForSimulator(projectId, projectPath, xcproj) {
+  const udid = document.getElementById(`sim-select-${projectId}`)?.value;
+  if (!udid) { toast('Select a simulator first', 'error'); return; }
+  try {
+    const data = await api('POST', '/api/build/simulator', { projectPath, xcproj, simulatorUdid: udid });
+    toast('Build started — check Xcode for progress', 'success');
+  } catch { toast('Failed to start build', 'error'); }
+}
+
+async function gitPull(projectPath, name) {
+  try {
+    const data = await api('POST', '/api/git/pull', { projectPath });
+    if (data.ok) {
+      toast(`Pulled ${name}`, 'success');
+      loadProjects();
+    } else {
+      toast(`Pull failed: ${data.error}`, 'error');
+    }
+  } catch { toast('Git pull failed', 'error'); }
+}
+
+async function showBuildPanel(id) {
+  selectProject(id);
+}
+
+// ─────────────────────────────────────────────
+// Filters
+// ─────────────────────────────────────────────
+function filterByType(type) {
+  activeFilter = type;
+  document.getElementById('type-filter').value = type;
+  renderProjects();
+}
+
+function filterByReadiness() {
+  activeFilter = 'readiness';
+  document.getElementById('type-filter').value = '';
+  renderProjects();
+}
+
+function filterByDirty() {
+  activeFilter = 'dirty';
+  document.getElementById('type-filter').value = '';
+  renderProjects();
+}
+
+function clearFilter() {
+  activeFilter = null;
+  document.getElementById('type-filter').value = '';
+  document.getElementById('search-input').value = '';
+  renderProjects();
+}
+
+// ─────────────────────────────────────────────
+// Utils
+// ─────────────────────────────────────────────
+function typeColor(type) {
+  switch(type) {
+    case 'xcode':
+    case 'xcode-workspace': return '#3b82f6';
+    case 'node': return '#22c55e';
+    case 'flutter': return '#06b6d4';
+    default: return 'var(--color-fg-muted)';
+  }
+}
+
+function toast(msg, type = '') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `
+    ${type === 'success' ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+    ${type === 'error' ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' : ''}
+    ${msg}
+  `;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-color-mode');
+  if (current === 'auto') {
+    html.setAttribute('data-color-mode', 'dark');
+    html.setAttribute('data-dark-theme', 'dark_dimmed');
+  } else if (current === 'dark') {
+    html.setAttribute('data-color-mode', 'light');
+  } else {
+    html.setAttribute('data-color-mode', 'auto');
+  }
+}
+</script>
+</body>
+</html>
