@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "tray": "cd menubar && npm start",
+    "tray:install": "cd menubar && npm install",
+    "tray:build": "cd menubar && npm run dist"
   },
   "keywords": [],
   "author": "",

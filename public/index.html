@@ -224,16 +224,7 @@
       font-size: 12px;
       color: var(--color-fg-muted);
     }
-    .git-row .branch-chip {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: var(--color-canvas-subtle);
-      border: 1px solid var(--color-border-default);
-      border-radius: 4px;
-      padding: 1px 7px;
-      font-family: ui-monospace, monospace;
-      font-size: 11px;
-      color: var(--color-fg-default);
-    }
+    /* .branch-chip is defined in the additions block below */
     .commit-text {
       font-size: 12px;
       color: var(--color-fg-muted);
@@ -646,6 +637,19 @@
   </aside>
 </div>
 
+<!-- Diff / Branch modal -->
+<div class="modal-backdrop hidden" id="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Changed Files</h3>
+      <button class="action-btn" onclick="closeModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
 <div class="toast-container" id="toast-container"></div>
 
 <script>
@@ -762,6 +766,11 @@ function getFilteredProjects() {
   if (activeFilter === 'xcode') projects = projects.filter(p => p.type === 'xcode' || p.type === 'xcode-workspace');
   if (activeFilter === 'readiness') projects = projects.filter(p => p.appStore && p.appStore.score >= 80);
   if (activeFilter === 'dirty') projects = projects.filter(p => p.git.isDirty);
+  if (activeFilter === 'non-main') projects = projects.filter(p => isNonMain(p.git.branch));
+
+  const branchF = document.getElementById('branch-filter')?.value || '';
+  if (branchF === 'main') projects = projects.filter(p => ['main','master'].includes(p.git.branch));
+  if (branchF === 'non-main') projects = projects.filter(p => isNonMain(p.git.branch));
 
   return projects;
 }
@@ -806,11 +815,12 @@ function renderProjectCard(p) {
 
       <div class="card-body">
         <div class="git-row">
-          <span class="branch-chip">
+          <span class="branch-chip ${isNonMain(p.git.branch) ? 'non-main' : ''}" title="Click to copy branch name" onclick="event.stopPropagation();copyBranch('${p.git.branch || 'unknown'}')">
             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
             ${p.git.branch || 'unknown'}
           </span>
           ${p.git.commitAge ? `<span class="header-meta">${p.git.commitAge}</span>` : ''}
+          ${isStaleBranch(p.git.commitAge) ? '<span class="stale-badge">stale</span>' : ''}
         </div>
         ${p.git.commitMsg ? `<div class="commit-text" title="${p.git.commitMsg}">
           <span class="commit-hash">${p.git.commitHash}</span> ${p.git.commitMsg}
@@ -854,6 +864,12 @@ function renderProjectCard(p) {
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           Pull
         </button>
+        ${p.git.isDirty ? `
+          <button class="action-btn danger" onclick="event.stopPropagation();showDiff('${p.id}', '${p.name}')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+            ~${p.git.changedFiles} changes
+          </button>
+        ` : ''}
       </div>
     </div>
   `;
@@ -954,6 +970,8 @@ function renderDetailPanel(p) {
       <button class="action-btn" onclick="openFinder('${p.path}')">Open Finder</button>
       <button class="action-btn" onclick="openTerminal('${p.path}')">Open Terminal</button>
       <button class="action-btn" onclick="gitPull('${p.path}', '${p.name}')">Git Pull</button>
+      <button class="action-btn" onclick="showBranches('${p.id}', '${p.name}')">Branches</button>
+      ${p.git.isDirty ? `<button class="action-btn danger" onclick="showDiff('${p.id}', '${p.name}')">View Changes</button>` : ''}
     </div>
   </div>`;
 
@@ -1072,12 +1090,134 @@ function filterByDirty() {
   renderProjects();
 }
 
+function filterByNonMain() {
+  activeFilter = 'non-main';
+  document.getElementById('type-filter').value = '';
+  document.getElementById('branch-filter').value = '';
+  renderProjects();
+}
+
 function clearFilter() {
   activeFilter = null;
   document.getElementById('type-filter').value = '';
+  document.getElementById('branch-filter').value = '';
   document.getElementById('search-input').value = '';
   renderProjects();
 }
+
+// ─────────────────────────────────────────────
+// Branch helpers
+// ─────────────────────────────────────────────
+function isNonMain(branch) {
+  return branch && !['main', 'master', 'HEAD', ''].includes(branch);
+}
+
+function isStaleBranch(commitAge) {
+  if (!commitAge) return false;
+  // Match ages like "45 days ago", "3 months ago", "1 year ago"
+  const monthsMatch = commitAge.match(/(\d+)\s+month/);
+  const yearsMatch = commitAge.match(/(\d+)\s+year/);
+  const daysMatch = commitAge.match(/(\d+)\s+day/);
+  if (yearsMatch) return true;
+  if (monthsMatch && parseInt(monthsMatch[1]) >= 1) return true;
+  if (daysMatch && parseInt(daysMatch[1]) >= 30) return true;
+  return false;
+}
+
+function copyBranch(branch) {
+  navigator.clipboard.writeText(branch).then(() => {
+    toast(`Copied: ${branch}`, 'success');
+  }).catch(() => toast('Copy failed', 'error'));
+}
+
+// ─────────────────────────────────────────────
+// Diff modal
+// ─────────────────────────────────────────────
+async function showDiff(projectId, projectName) {
+  const backdrop = document.getElementById('modal-backdrop');
+  const title = document.getElementById('modal-title');
+  const body = document.getElementById('modal-body');
+
+  title.textContent = `Changed Files — ${projectName}`;
+  body.innerHTML = '<div class="skeleton" style="height:12px;width:80%;margin-bottom:8px"></div><div class="skeleton" style="height:12px;width:60%"></div>';
+  backdrop.classList.remove('hidden');
+
+  try {
+    const data = await api('GET', `/api/git/diff/${projectId}`);
+    if (!data.ok) { body.innerHTML = '<p style="color:var(--color-danger-fg)">Failed to load diff</p>'; return; }
+
+    const statusColor = { M: 'M', A: 'A', D: 'D', R: 'R', '?': '?' };
+    const branchHtml = `
+      <div style="margin-bottom:14px;padding:10px 12px;background:var(--color-canvas-subtle);border-radius:6px;font-size:12px">
+        <span style="color:var(--color-fg-muted)">Current branch: </span>
+        <span class="branch-chip ${isNonMain(data.branch) ? 'non-main' : ''}" style="cursor:pointer" onclick="copyBranch('${data.branch}')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+          ${data.branch}
+        </span>
+        ${isNonMain(data.branch) ? '<span class="stale-badge" style="margin-left:6px">non-main</span>' : ''}
+      </div>
+    `;
+
+    if (!data.files.length) {
+      body.innerHTML = branchHtml + '<p style="color:var(--color-fg-muted);font-size:13px">Working tree is clean.</p>';
+      return;
+    }
+
+    const fileRows = data.files.map(f => {
+      const s = f.status || '?';
+      return `<li><span class="diff-status ${s}">${s}</span><span>${f.file}</span></li>`;
+    }).join('');
+
+    body.innerHTML = branchHtml + `
+      <p style="font-size:12px;color:var(--color-fg-muted);margin:0 0 10px">${data.files.length} file${data.files.length !== 1 ? 's' : ''} changed</p>
+      <ul class="diff-file-list">${fileRows}</ul>
+    `;
+  } catch { body.innerHTML = '<p style="color:var(--color-danger-fg)">Server error</p>'; }
+}
+
+async function showBranches(projectId, projectName) {
+  const backdrop = document.getElementById('modal-backdrop');
+  const title = document.getElementById('modal-title');
+  const body = document.getElementById('modal-body');
+
+  title.textContent = `Branches — ${projectName}`;
+  body.innerHTML = '<div class="skeleton" style="height:12px;width:80%;margin-bottom:8px"></div>';
+  backdrop.classList.remove('hidden');
+
+  try {
+    const data = await api('GET', `/api/git/branches/${projectId}`);
+    if (!data.ok) { body.innerHTML = '<p style="color:var(--color-danger-fg)">Failed to load branches</p>'; return; }
+
+    if (!data.branches.length) {
+      body.innerHTML = '<p style="color:var(--color-fg-muted);font-size:13px">No branches found.</p>';
+      return;
+    }
+
+    const rows = data.branches.map(b => `
+      <tr>
+        <td class="${b.current ? 'current-branch' : ''}" style="font-family:ui-monospace,monospace">
+          ${b.current ? '● ' : '  '}${b.name}
+        </td>
+        <td style="color:var(--color-fg-muted)">${b.age || ''}</td>
+        <td style="color:var(--color-fg-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.lastMsg || ''}</td>
+      </tr>
+    `).join('');
+
+    body.innerHTML = `<table class="branch-table"><thead><tr>
+      <th style="text-align:left;padding:4px 6px;font-size:11px;color:var(--color-fg-muted)">Branch</th>
+      <th style="text-align:left;padding:4px 6px;font-size:11px;color:var(--color-fg-muted)">Last Commit</th>
+      <th style="text-align:left;padding:4px 6px;font-size:11px;color:var(--color-fg-muted)">Message</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+  } catch { body.innerHTML = '<p style="color:var(--color-danger-fg)">Server error</p>'; }
+}
+
+function closeModal() {
+  document.getElementById('modal-backdrop').classList.add('hidden');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
 
 // ─────────────────────────────────────────────
 // Utils
